@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
-import { eq } from "drizzle-orm";
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { asc, eq } from "drizzle-orm";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   activityLog,
   agents,
@@ -22,6 +22,7 @@ import {
 import { runningProcesses } from "../adapters/index.ts";
 const mockTelemetryClient = vi.hoisted(() => ({ track: vi.fn() }));
 const mockTrackAgentFirstHeartbeat = vi.hoisted(() => vi.fn());
+const mockAdapterExecute = vi.hoisted(() => vi.fn());
 
 vi.mock("../telemetry.ts", () => ({
   getTelemetryClient: () => mockTelemetryClient,
@@ -43,14 +44,7 @@ vi.mock("../adapters/index.ts", async () => {
     ...actual,
     getServerAdapter: vi.fn(() => ({
       supportsLocalAgentJwt: false,
-      execute: vi.fn(async () => ({
-        exitCode: 0,
-        signal: null,
-        timedOut: false,
-        errorMessage: null,
-        provider: "test",
-        model: "test-model",
-      })),
+      execute: mockAdapterExecute,
     })),
   };
 });
@@ -104,6 +98,15 @@ async function waitForRunToSettle(
   return heartbeat.getRun(runId);
 }
 
+async function waitForAdapterExecuteCalls(count: number, timeoutMs = 3_000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (mockAdapterExecute.mock.calls.length >= count) return true;
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+  return mockAdapterExecute.mock.calls.length >= count;
+}
+
 async function spawnOrphanedProcessGroup() {
   const leader = spawn(
     process.execPath,
@@ -154,6 +157,18 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     tempDb = await startEmbeddedPostgresTestDatabase("paperclip-heartbeat-recovery-");
     db = createDb(tempDb.connectionString);
   }, 20_000);
+
+  beforeEach(() => {
+    mockAdapterExecute.mockReset();
+    mockAdapterExecute.mockResolvedValue({
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      errorMessage: null,
+      provider: "test",
+      model: "test-model",
+    });
+  });
 
   afterEach(async () => {
     vi.clearAllMocks();
@@ -516,6 +531,63 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
       .then((rows) => rows[0] ?? null);
     expect(issue?.executionRunId).toBeNull();
     expect(issue?.checkoutRunId).toBe(runId);
+  });
+
+  it("automatically retries retryable adapter capacity failures", async () => {
+    const { agentId, runId, issueId } = await seedRunFixture({
+      agentStatus: "idle",
+      runStatus: "queued",
+    });
+    mockAdapterExecute
+      .mockResolvedValueOnce({
+        exitCode: 1,
+        signal: null,
+        timedOut: false,
+        errorMessage: "Selected model is at capacity. Please try a different model.",
+        provider: "test",
+        model: "test-model",
+      })
+      .mockResolvedValueOnce({
+        exitCode: 0,
+        signal: null,
+        timedOut: false,
+        errorMessage: null,
+        provider: "test",
+        model: "test-model",
+      });
+    const heartbeat = heartbeatService(db);
+
+    await heartbeat.resumeQueuedRuns();
+    expect(await waitForAdapterExecuteCalls(2)).toBe(true);
+
+    const runs = await db
+      .select()
+      .from(heartbeatRuns)
+      .where(eq(heartbeatRuns.agentId, agentId))
+      .orderBy(asc(heartbeatRuns.createdAt));
+    expect(runs).toHaveLength(2);
+    expect(runs[0]?.id).toBe(runId);
+    expect(runs[0]?.status).toBe("failed");
+    expect(runs[0]?.errorCode).toBe("adapter_failed");
+    expect(runs[0]?.error).toContain("Selected model is at capacity");
+    expect(runs[1]?.status).toBe("succeeded");
+    expect(runs[1]?.retryOfRunId).toBe(runId);
+    expect((runs[1]?.contextSnapshot as Record<string, unknown>)?.retryReason).toBe("retryable_adapter_failure");
+    expect((runs[1]?.contextSnapshot as Record<string, unknown>)?.retryableAdapterFailureRetryCount).toBe(1);
+
+    const issue = await db
+      .select()
+      .from(issues)
+      .where(eq(issues.id, issueId))
+      .then((rows) => rows[0] ?? null);
+    expect(issue?.executionRunId).toBeNull();
+    expect(issue?.checkoutRunId).toBe(runs[1]?.id);
+
+    const originalRunEvents = await db
+      .select()
+      .from(heartbeatRunEvents)
+      .where(eq(heartbeatRunEvents.runId, runId));
+    expect(originalRunEvents.some((event) => event.message.includes("queued retry"))).toBe(true);
   });
 
   it("clears the detached warning when the run reports activity again", async () => {

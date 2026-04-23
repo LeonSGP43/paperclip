@@ -92,6 +92,7 @@ const MANAGED_WORKSPACE_GIT_CLONE_TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_INLINE_WAKE_COMMENTS = 8;
 const MAX_INLINE_WAKE_COMMENT_BODY_CHARS = 4_000;
 const MAX_INLINE_WAKE_COMMENT_BODY_TOTAL_CHARS = 12_000;
+const MAX_RETRYABLE_ADAPTER_FAILURE_RETRIES = 3;
 const execFile = promisify(execFileCallback);
 const ACTIVE_HEARTBEAT_RUN_STATUSES = ["queued", "running"] as const;
 const SESSIONED_LOCAL_ADAPTERS = new Set([
@@ -104,6 +105,8 @@ const SESSIONED_LOCAL_ADAPTERS = new Set([
   "pi_local",
 ]);
 const INLINE_BASE64_IMAGE_DATA_RE = /("type":"image","source":\{"type":"base64","data":")([A-Za-z0-9+/=]{1024,})(")/g;
+const RETRYABLE_ADAPTER_FAILURE_RE =
+  /(selected model is at capacity|model is at capacity|at capacity|temporarily overloaded|overloaded|rate limit|rate_limited|try again later|server overloaded|too many requests|429|503)/i;
 
 type RuntimeConfigSecretResolver = Pick<
   ReturnType<typeof secretService>,
@@ -598,6 +601,19 @@ export function prioritizeProjectWorkspaceCandidatesForRun<T extends ProjectWork
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function isRetryableAdapterFailureMessage(message: string | null | undefined): boolean {
+  return typeof message === "string" && RETRYABLE_ADAPTER_FAILURE_RE.test(message);
+}
+
+function retryableAdapterFailureRetryCount(contextSnapshot: Record<string, unknown>): number {
+  return Math.max(0, Math.floor(asNumber(contextSnapshot.retryableAdapterFailureRetryCount, 0)));
+}
+
+function truncateRetryableAdapterFailureMessage(message: string | null | undefined): string | null {
+  if (!message) return null;
+  return message.length > 500 ? `${message.slice(0, 497)}...` : message;
 }
 
 export function summarizeHeartbeatRunContextSnapshot(
@@ -2586,6 +2602,115 @@ export function heartbeatService(db: Db) {
     return queued;
   }
 
+  async function enqueueRetryableAdapterFailureRetry(
+    run: typeof heartbeatRuns.$inferSelect,
+    agent: typeof agents.$inferSelect,
+    now: Date,
+    input: { errorMessage: string | null | undefined },
+  ) {
+    const contextSnapshot = parseObject(run.contextSnapshot);
+    const issueId = readNonEmptyString(contextSnapshot.issueId);
+    const taskKey = deriveTaskKeyWithHeartbeatFallback(contextSnapshot, null);
+    const sessionBefore = await resolveSessionBeforeForWakeup(agent, taskKey);
+    const retryCount = retryableAdapterFailureRetryCount(contextSnapshot) + 1;
+    const retryContextSnapshot = {
+      ...contextSnapshot,
+      retryOfRunId: run.id,
+      wakeReason: "retryable_adapter_failure",
+      retryReason: "retryable_adapter_failure",
+      retryableAdapterFailureRetryCount: retryCount,
+      retryableAdapterFailureMessage: truncateRetryableAdapterFailureMessage(input.errorMessage),
+    };
+
+    const queued = await db.transaction(async (tx) => {
+      const wakeupRequest = await tx
+        .insert(agentWakeupRequests)
+        .values({
+          companyId: run.companyId,
+          agentId: run.agentId,
+          source: "automation",
+          triggerDetail: "system",
+          reason: "retryable_adapter_failure",
+          payload: {
+            ...(issueId ? { issueId } : {}),
+            retryOfRunId: run.id,
+            retryCount,
+          },
+          status: "queued",
+          requestedByActorType: "system",
+          requestedByActorId: null,
+          updatedAt: now,
+        })
+        .returning()
+        .then((rows) => rows[0]);
+
+      const retryRun = await tx
+        .insert(heartbeatRuns)
+        .values({
+          companyId: run.companyId,
+          agentId: run.agentId,
+          invocationSource: "automation",
+          triggerDetail: "system",
+          status: "queued",
+          wakeupRequestId: wakeupRequest.id,
+          contextSnapshot: retryContextSnapshot,
+          sessionIdBefore: sessionBefore,
+          retryOfRunId: run.id,
+          updatedAt: now,
+        })
+        .returning()
+        .then((rows) => rows[0]);
+
+      await tx
+        .update(agentWakeupRequests)
+        .set({
+          runId: retryRun.id,
+          updatedAt: now,
+        })
+        .where(eq(agentWakeupRequests.id, wakeupRequest.id));
+
+      if (issueId) {
+        await tx
+          .update(issues)
+          .set({
+            executionRunId: retryRun.id,
+            executionAgentNameKey: normalizeAgentNameKey(agent.name),
+            executionLockedAt: now,
+            updatedAt: now,
+          })
+          .where(and(eq(issues.id, issueId), eq(issues.companyId, run.companyId), eq(issues.executionRunId, run.id)));
+      }
+
+      return retryRun;
+    });
+
+    publishLiveEvent({
+      companyId: queued.companyId,
+      type: "heartbeat.run.queued",
+      payload: {
+        runId: queued.id,
+        agentId: queued.agentId,
+        invocationSource: queued.invocationSource,
+        triggerDetail: queued.triggerDetail,
+        wakeupRequestId: queued.wakeupRequestId,
+      },
+    });
+
+    await appendRunEvent(queued, 1, {
+      eventType: "lifecycle",
+      stream: "system",
+      level: "warn",
+      message: "Queued automatic retry after retryable adapter failure",
+      payload: {
+        retryOfRunId: run.id,
+        retryCount,
+        errorMessage: truncateRetryableAdapterFailureMessage(input.errorMessage),
+      },
+    });
+
+    return queued;
+  }
+
   function parseHeartbeatPolicy(agent: typeof agents.$inferSelect) {
     const runtimeConfig = parseObject(agent.runtimeConfig);
     const heartbeat = parseObject(runtimeConfig.heartbeat);
@@ -4044,14 +4169,34 @@ export function heartbeatService(db: Db) {
 
       const finalizedRun = await getRun(run.id);
       if (finalizedRun) {
+        const finalizedContext = parseObject(finalizedRun.contextSnapshot);
+        const retryableAdapterFailure =
+          outcome === "failed" &&
+          isRetryableAdapterFailureMessage(adapterResult.errorMessage ?? finalizedRun.error);
+        const retryableAdapterRetryCount = retryableAdapterFailureRetryCount(finalizedContext);
+        const retryableAdapterRetryRun =
+          retryableAdapterFailure && retryableAdapterRetryCount < MAX_RETRYABLE_ADAPTER_FAILURE_RETRIES
+            ? await enqueueRetryableAdapterFailureRetry(finalizedRun, agent, new Date(), {
+                errorMessage: adapterResult.errorMessage ?? finalizedRun.error,
+              })
+            : null;
         await appendRunEvent(finalizedRun, seq++, {
           eventType: "lifecycle",
           stream: "system",
-          level: outcome === "succeeded" ? "info" : "error",
-          message: `run ${outcome}`,
+          level: outcome === "succeeded" ? "info" : retryableAdapterRetryRun ? "warn" : "error",
+          message: retryableAdapterRetryRun
+            ? `run ${outcome}; queued retry ${retryableAdapterRetryRun.id}`
+            : `run ${outcome}`,
           payload: {
             status,
             exitCode: adapterResult.exitCode,
+            ...(retryableAdapterRetryRun
+              ? {
+                  retryRunId: retryableAdapterRetryRun.id,
+                  retryReason: "retryable_adapter_failure",
+                  retryCount: retryableAdapterRetryCount + 1,
+                }
+              : {}),
           },
         });
         if (issueId && outcome === "succeeded") {
@@ -4070,8 +4215,10 @@ export function heartbeatService(db: Db) {
             );
           }
         }
-        await finalizeIssueCommentPolicy(finalizedRun, agent);
-        await releaseIssueExecutionAndPromote(finalizedRun);
+        if (!retryableAdapterRetryRun) {
+          await finalizeIssueCommentPolicy(finalizedRun, agent);
+          await releaseIssueExecutionAndPromote(finalizedRun);
+        }
       }
 
       if (finalizedRun) {
@@ -4131,14 +4278,34 @@ export function heartbeatService(db: Db) {
       });
 
       if (failedRun) {
+        const failedContext = parseObject(failedRun.contextSnapshot);
+        const retryableAdapterFailure = isRetryableAdapterFailureMessage(message);
+        const retryableAdapterRetryCount = retryableAdapterFailureRetryCount(failedContext);
+        const retryableAdapterRetryRun =
+          retryableAdapterFailure && retryableAdapterRetryCount < MAX_RETRYABLE_ADAPTER_FAILURE_RETRIES
+            ? await enqueueRetryableAdapterFailureRetry(failedRun, agent, new Date(), {
+                errorMessage: message,
+              })
+            : null;
         await appendRunEvent(failedRun, seq++, {
           eventType: "error",
           stream: "system",
-          level: "error",
-          message,
+          level: retryableAdapterRetryRun ? "warn" : "error",
+          message: retryableAdapterRetryRun
+            ? `${message}; queued retry ${retryableAdapterRetryRun.id}`
+            : message,
+          payload: retryableAdapterRetryRun
+            ? {
+                retryRunId: retryableAdapterRetryRun.id,
+                retryReason: "retryable_adapter_failure",
+                retryCount: retryableAdapterRetryCount + 1,
+              }
+            : undefined,
         });
-        await finalizeIssueCommentPolicy(failedRun, agent);
-        await releaseIssueExecutionAndPromote(failedRun);
+        if (!retryableAdapterRetryRun) {
+          await finalizeIssueCommentPolicy(failedRun, agent);
+          await releaseIssueExecutionAndPromote(failedRun);
+        }
 
         await updateRuntimeState(agent, failedRun, {
           exitCode: null,
