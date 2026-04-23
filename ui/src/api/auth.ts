@@ -5,6 +5,7 @@ import {
   type CurrentUserProfile,
   type UpdateCurrentUserProfile,
 } from "@paperclipai/shared";
+import { getCurrentLocale } from "@/lib/locale-store";
 
 type AuthErrorBody =
   | {
@@ -64,7 +65,7 @@ async function authPost(path: string, body: Record<string, unknown>) {
   const res = await fetch(`/api/auth${path}`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-paperclip-locale": getCurrentLocale() },
     body: JSON.stringify(body),
   });
   const payload = await res.json().catch(() => null);
@@ -78,7 +79,7 @@ async function authPatch<T>(path: string, body: Record<string, unknown>, parse: 
   const res = await fetch(`/api/auth${path}`, {
     method: "PATCH",
     credentials: "include",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json", Accept: "application/json", "x-paperclip-locale": getCurrentLocale() },
     body: JSON.stringify(body),
   });
   const payload = await res.json().catch(() => null);
@@ -92,7 +93,7 @@ export const authApi = {
   getSession: async (): Promise<AuthSession | null> => {
     const res = await fetch("/api/auth/get-session", {
       credentials: "include",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", "x-paperclip-locale": getCurrentLocale() },
     });
     if (res.status === 401) return null;
     const payload = await res.json().catch(() => null);
@@ -116,7 +117,7 @@ export const authApi = {
   getProfile: async (): Promise<CurrentUserProfile> => {
     const res = await fetch("/api/auth/profile", {
       credentials: "include",
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json", "x-paperclip-locale": getCurrentLocale() },
     });
     const payload = await res.json().catch(() => null);
     if (!res.ok) {

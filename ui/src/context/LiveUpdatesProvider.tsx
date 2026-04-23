@@ -1,9 +1,9 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
 import type { Agent, Issue, IssueComment, LiveEvent } from "@paperclipai/shared";
+import { createTranslator } from "../../../packages/shared/src/i18n.js";
 import type { RunForIssue } from "../api/activity";
 import type { ActiveRunForIssue, LiveRunForIssue } from "../api/heartbeats";
-import type { CompanyUserDirectoryResponse } from "../api/access";
 import { issuesApi } from "../api/issues";
 import { authApi } from "../api/auth";
 import { useCompany } from "./CompanyContext";
@@ -12,6 +12,7 @@ import { useToastActions } from "./ToastContext";
 import { upsertIssueCommentInPages } from "../lib/optimistic-issue-comments";
 import { queryKeys } from "../lib/queryKeys";
 import { toCompanyRelativePath } from "../lib/company-routes";
+import { getCurrentLocale } from "../lib/locale-store";
 import { useLocation } from "../lib/router";
 
 const TOAST_COOLDOWN_WINDOW_MS = 10_000;
@@ -53,19 +54,6 @@ function resolveAgentName(
   return agent?.name ?? null;
 }
 
-function resolveUserName(
-  queryClient: QueryClient,
-  companyId: string,
-  userId: string,
-): string | null {
-  const directory = queryClient.getQueryData<CompanyUserDirectoryResponse>(
-    queryKeys.access.companyUserDirectory(companyId),
-  );
-  if (!directory) return null;
-  const entry = directory.users.find((u) => u.principalId === userId);
-  return entry?.user?.name?.trim() || entry?.user?.email?.trim() || null;
-}
-
 function truncate(text: string, max: number): string {
   if (text.length <= max) return text;
   return text.slice(0, max - 1) + "\u2026";
@@ -77,14 +65,15 @@ function resolveActorLabel(
   actorType: string | null,
   actorId: string | null,
 ): string {
+  const { t } = createTranslator(getCurrentLocale());
   if (actorType === "agent" && actorId) {
     return resolveAgentName(queryClient, companyId, actorId) ?? `Agent ${shortId(actorId)}`;
   }
-  if (actorType === "system") return "System";
+  if (actorType === "system") return t("common.system");
   if (actorType === "user" && actorId) {
-    return resolveUserName(queryClient, companyId, actorId) ?? "Board";
+    return t("common.board");
   }
-  return "Someone";
+  return t("common.unknown");
 }
 
 interface IssueToastContext {

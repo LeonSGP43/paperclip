@@ -1,3 +1,6 @@
+import { createTranslator } from "../../../packages/shared/src/i18n.js";
+import { getCurrentLocale } from "./locale-store";
+
 export interface AssigneeSelection {
   assigneeAgentId: string | null;
   assigneeUserId: string | null;
@@ -63,10 +66,11 @@ export function parseAssigneeValue(value: string): AssigneeSelection {
 }
 
 export function currentUserAssigneeOption(currentUserId: string | null | undefined): AssigneeOption[] {
+  const { t } = createTranslator(getCurrentLocale());
   if (!currentUserId) return [];
   return [{
     id: assigneeValueFromSelection({ assigneeUserId: currentUserId }),
-    label: "Me",
+    label: t("common.me"),
     searchText: currentUserId === "local-board" ? "me board human local-board" : `me human ${currentUserId}`,
   }];
 }
@@ -76,14 +80,16 @@ export function formatAssigneeUserLabel(
   currentUserId: string | null | undefined,
   userLabels?: ReadonlyMap<string, string> | Record<string, string> | null,
 ): string | null {
+  const { t } = createTranslator(getCurrentLocale());
   if (!userId) return null;
-  if (currentUserId && userId === currentUserId) return "You";
+  if (currentUserId && userId === currentUserId) return t("common.you");
   if (userLabels) {
-    const label = userLabels instanceof Map
-      ? userLabels.get(userId)
+    const maybeMap = userLabels as { get?: unknown };
+    const label = typeof maybeMap.get === "function"
+      ? maybeMap.get(userId)
       : (userLabels as Record<string, string>)[userId];
     if (typeof label === "string" && label.trim()) return label;
   }
-  if (userId === "local-board") return "Board";
+  if (userId === "local-board") return t("common.board");
   return userId.slice(0, 5);
 }
