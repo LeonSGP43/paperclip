@@ -43,6 +43,12 @@ It looks like a task manager — but under the hood it has org charts, budgets, 
 
 <br/>
 
+## Versioning
+
+This fork tracks repository-level development state in `VERSION` using SemVer. In-progress work is recorded under `## [Unreleased]` in `CHANGELOG.md`, and release entries are promoted to dated version sections before release or push gates that require version evidence.
+
+<br/>
+
 > **COMING SOON: Clipmart** — Download and run entire companies with one click. Browse pre-built company templates — full org structures, agent configs, and skills — and import them into your Paperclip instance in seconds.
 
 <br/>
