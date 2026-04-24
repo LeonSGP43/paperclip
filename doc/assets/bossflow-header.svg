@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="90" y1="40" x2="1110" y2="380" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#101317" />
+      <stop offset="0.55" stop-color="#171C24" />
+      <stop offset="1" stop-color="#221A16" />
+    </linearGradient>
+    <radialGradient id="glow-a" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(264 106) rotate(36.2651) scale(356.884 245.278)">
+      <stop stop-color="#67E8F9" stop-opacity=".28" />
+      <stop offset="1" stop-color="#67E8F9" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="glow-b" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(980 106) rotate(144.813) scale(296.128 214.887)">
+      <stop stop-color="#FB923C" stop-opacity=".24" />
+      <stop offset="1" stop-color="#FB923C" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="mark-bg" x1="131" y1="76" x2="307" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#14161A" />
+      <stop offset="1" stop-color="#23272F" />
+    </linearGradient>
+    <linearGradient id="mark-spine" x1="164" y1="114" x2="196" y2="224" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67E8F9" />
+      <stop offset="1" stop-color="#34D399" />
+    </linearGradient>
+    <linearGradient id="mark-lane" x1="212" y1="116" x2="274" y2="142" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FAFC" />
+      <stop offset="1" stop-color="#CBD5E1" />
+    </linearGradient>
+    <linearGradient id="mark-accent" x1="212" y1="159" x2="259" y2="183" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38BDF8" />
+      <stop offset="1" stop-color="#34D399" />
+    </linearGradient>
+    <linearGradient id="mark-warm" x1="212" y1="202" x2="284" y2="228" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FB923C" />
+      <stop offset="1" stop-color="#F97316" />
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="1176" height="396" rx="32" fill="url(#bg)" />
+  <rect x="12" y="12" width="1176" height="396" rx="32" stroke="rgba(255,255,255,0.08)" />
+  <rect x="12" y="12" width="1176" height="396" rx="32" fill="url(#glow-a)" />
+  <rect x="12" y="12" width="1176" height="396" rx="32" fill="url(#glow-b)" />
+  <rect x="132" y="76" width="176" height="176" rx="48" fill="url(#mark-bg)" />
+  <rect x="166" y="112" width="30" height="104" rx="15" fill="url(#mark-spine)" />
+  <rect x="214" y="116" width="58" height="22" rx="11" fill="url(#mark-lane)" />
+  <rect x="214" y="159" width="44" height="22" rx="11" fill="url(#mark-accent)" />
+  <rect x="214" y="202" width="66" height="22" rx="11" fill="url(#mark-warm)" />
+  <circle cx="206" cy="127" r="5" fill="#67E8F9" />
+  <circle cx="206" cy="170" r="5" fill="#38BDF8" />
+  <circle cx="206" cy="213" r="5" fill="#FB923C" />
+  <text x="360" y="158" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="72" font-weight="700" letter-spacing="8">BOSSFLOW</text>
+  <text x="360" y="204" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="500">
+    Internationalized control plane for AI teams
+  </text>
+  <text x="360" y="244" fill="#CBD5E1" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="500">
+    Persistent issue threads, stronger task completion loops, and collaborative operator control.
+  </text>
+  <g opacity=".9">
+    <rect x="362" y="288" width="228" height="44" rx="22" fill="rgba(255,255,255,0.06)" />
+    <rect x="612" y="288" width="260" height="44" rx="22" fill="rgba(255,255,255,0.06)" />
+    <rect x="894" y="288" width="200" height="44" rx="22" fill="rgba(255,255,255,0.06)" />
+    <text x="388" y="316" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600">Shared context</text>
+    <text x="638" y="316" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600">Execution follow-through</text>
+    <text x="920" y="316" fill="#E2E8F0" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="600">Team orchestration</text>
+  </g>
+</svg>

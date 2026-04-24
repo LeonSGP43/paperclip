@@ -6,9 +6,9 @@ import { queryKeys } from "../lib/queryKeys";
 import { getRememberedInvitePath } from "../lib/invite-memory";
 import { Button } from "@/components/ui/button";
 import { AsciiArtAnimation } from "@/components/AsciiArtAnimation";
-import { Sparkles } from "lucide-react";
 import { LocaleSwitcher } from "@/components/LocaleSwitcher";
 import { useLocale } from "@/context/LocaleContext";
+import { BossFlowLogo, BossFlowMark } from "@/components/BossFlowBrand";
 
 type AuthMode = "sign_in" | "sign_up";
 
@@ -83,10 +83,11 @@ export function AuthPage() {
       {/* Left half — form */}
       <div className="w-full md:w-1/2 flex flex-col overflow-y-auto">
         <div className="w-full max-w-md mx-auto my-auto px-8 py-12">
-          <div className="flex items-center gap-2 mb-8">
-            <Sparkles className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium">Paperclip</span>
-          </div>
+          <BossFlowLogo
+            className="mb-8"
+            markClassName="h-9 w-9"
+            subtitle="Collaborative control plane for AI teams"
+          />
 
           <h1 className="text-xl font-semibold">
             {mode === "sign_in" ? t("auth.signInTitle") : t("auth.signUpTitle")}
@@ -182,8 +183,60 @@ export function AuthPage() {
       </div>
 
       {/* Right half — ASCII art animation (hidden on mobile) */}
-      <div className="hidden md:block w-1/2 overflow-hidden">
-        <AsciiArtAnimation />
+      <div className="relative hidden w-1/2 overflow-hidden md:block">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_16%,rgba(255,255,255,0.1),transparent_24%),radial-gradient(circle_at_top_left,rgba(103,232,249,0.14),transparent_34%),radial-gradient(circle_at_75%_18%,rgba(251,146,60,0.16),transparent_28%),linear-gradient(180deg,#0f1115_0%,#181c22_100%)]" />
+        <div className="absolute inset-0 opacity-45">
+          <AsciiArtAnimation />
+        </div>
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,17,21,0.2),rgba(15,17,21,0.72))]" />
+        <div className="relative z-10 flex h-full flex-col justify-between px-10 py-12">
+          <div className="max-w-md space-y-5">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-medium tracking-[0.14em] text-zinc-300 uppercase backdrop-blur-sm">
+              <BossFlowMark className="h-4 w-4" tone="light" />
+              BossFlow Console
+            </div>
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-6 shadow-[0_30px_80px_rgba(0,0,0,0.28)] backdrop-blur-md">
+              <BossFlowLogo
+                markClassName="h-14 w-14"
+                titleClassName="text-lg tracking-[0.22em] text-white"
+                subtitleClassName="text-sm text-zinc-300"
+                subtitle="Collaborative control plane for AI teams."
+                tone="light"
+              />
+              <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-black/20">
+                <img
+                  src="/brands/bossflow-mark-white.png"
+                  alt="BossFlow logo"
+                  className="h-48 w-full object-contain px-10 py-6"
+                />
+              </div>
+            </div>
+            <h2 className="text-4xl font-semibold tracking-tight text-white">
+              Keep the work moving until it actually lands.
+            </h2>
+            <p className="text-sm leading-7 text-zinc-300">
+              Route tasks across specialists, keep long-running context alive, and review outcomes from one
+              operator console.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              ["Shared context", "Persistent issue threads and company memory"],
+              ["Operator loops", "Budgets, approvals, and visible execution state"],
+              ["Task finish", "Designed to push work through to an actual outcome"],
+            ].map(([title, body]) => (
+              <div
+                key={title}
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-zinc-200 backdrop-blur-sm"
+              >
+                <BossFlowMark className="mb-4 h-7 w-7" tone="light" />
+                <div className="text-sm font-medium text-white">{title}</div>
+                <div className="mt-2 text-xs leading-6 text-zinc-400">{body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

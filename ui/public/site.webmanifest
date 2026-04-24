@@ -1,14 +1,14 @@
 {
   "id": "/",
-  "name": "Paperclip",
-  "short_name": "Paperclip",
-  "description": "AI-powered project management and agent coordination platform",
+  "name": "BossFlow",
+  "short_name": "BossFlow",
+  "description": "Internationalized control plane for AI teams, task completion, and collaborative agent orchestration",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "theme_color": "#18181b",
-  "background_color": "#18181b",
+  "theme_color": "#111418",
+  "background_color": "#111418",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",

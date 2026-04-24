@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" fill="none">
+  <defs>
+    <linearGradient id="bossflow-bg" x1="10" y1="8" x2="86" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#14161A" />
+      <stop offset="1" stop-color="#23272F" />
+    </linearGradient>
+    <linearGradient id="bossflow-spine" x1="24" y1="24" x2="40" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#67E8F9" />
+      <stop offset="1" stop-color="#34D399" />
+    </linearGradient>
+    <linearGradient id="bossflow-lane" x1="44" y1="24" x2="72" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#F8FAFC" />
+      <stop offset="1" stop-color="#CBD5E1" />
+    </linearGradient>
+    <linearGradient id="bossflow-accent" x1="44" y1="41" x2="66" y2="52" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38BDF8" />
+      <stop offset="1" stop-color="#34D399" />
+    </linearGradient>
+    <linearGradient id="bossflow-warm" x1="44" y1="58" x2="74" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FB923C" />
+      <stop offset="1" stop-color="#F97316" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="80" height="80" rx="24" fill="url(#bossflow-bg)" />
+  <rect x="24" y="24" width="14" height="48" rx="7" fill="url(#bossflow-spine)" />
+  <rect x="46" y="25" width="26" height="10" rx="5" fill="url(#bossflow-lane)" />
+  <rect x="46" y="42" width="20" height="10" rx="5" fill="url(#bossflow-accent)" />
+  <rect x="46" y="59" width="28" height="10" rx="5" fill="url(#bossflow-warm)" />
+  <circle cx="42" cy="30" r="2.5" fill="#67E8F9" />
+  <circle cx="42" cy="47" r="2.5" fill="#38BDF8" />
+  <circle cx="42" cy="64" r="2.5" fill="#FB923C" />
+  <text x="110" y="43" fill="#F8FAFC" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="3.2">BOSSFLOW</text>
+  <text x="110" y="67" fill="#94A3B8" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="500" letter-spacing="1.4">
+    COLLABORATIVE CONTROL PLANE FOR AI TEAMS
+  </text>
+</svg>

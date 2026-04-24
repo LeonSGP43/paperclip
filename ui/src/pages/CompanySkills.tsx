@@ -34,6 +34,7 @@ import { cn } from "../lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { BossFlowMark } from "../components/BossFlowBrand";
 import {
   Boxes,
   ChevronDown,
@@ -47,7 +48,6 @@ import {
   Github,
   Link2,
   ExternalLink,
-  Paperclip,
   Pencil,
   Plus,
   RefreshCw,
@@ -183,7 +183,7 @@ function sourceMeta(sourceBadge: CompanySkillSourceBadge, sourceLabel: string | 
       };
     case "paperclip":
       return {
-        icon: Paperclip,
+        icon: BossFlowMark,
         label: sourceLabel ?? t("companySkills.sourcePaperclip"),
         managedLabel: t("companySkills.sourcePaperclipManaged"),
       };
